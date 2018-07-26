@@ -3,6 +3,12 @@
         {% for nikki in all %}
             <h1>{{ nikki.title }}</h1>
             <p>{{ nikki.content }}</p>
+            <form action="{{ path('delete', {'id': nikki.id }) }}" method="post">
+                <input type="hidden" name="_method" value="delete">
+                <input type="submit" value="この記事を削除">
+            </form>
+            <a href="{{ path('edit', {'id': nikki.id }) }}">この記事を編集</a>
         {% endfor %}
+        {# {{form(form)}} #}
     </body>
 </html>

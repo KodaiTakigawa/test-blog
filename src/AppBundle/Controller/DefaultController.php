@@ -29,11 +29,9 @@ class DefaultController extends Controller
      */
     public function testblogAction(Request $request){
         $name = "takigawa";
-        $names = array('taro', 'maro', 'taki', 'yone', 'kodai');
+        $names = ['taro', 'maro', 'taki', 'yone', 'kodai'];
         // 'default/testblog.html.twigを表示。変数name,namesをわたす。
-        return $this->render('default/testblog.html.twig', array(
-            "name" => $name, "names" => $names
-        ));
+        return $this->render('default/testblog.html.twig', ["name" => $name, "names" => $names]);
     }
     // 記事一覧、記事の詳細、記事の作成、記事の編集
     // 記事の作成、へんしゅう、削除
@@ -52,9 +50,9 @@ class DefaultController extends Controller
         // Postテーブルから全て取り出す。
         $allPosts = $postRepository->findAll(); 
         // post/list.html.twigを表示。変数allをわたす
-        return $this->render('post/list.html.twig', array(
-            'all' => $allPosts
-        ));
+        $post = new Post();
+        $form = $this->cForm($post);
+        return $this->render('post/list.html.twig', ['all' => $allPosts, 'form' => $form->createView()]);
         
     }
 
@@ -77,14 +75,12 @@ class DefaultController extends Controller
         $post = new Post();
         // cForm関数に$postをわたして、formに代入
         // form関数で自動的にformを作ることが目的
+        // cForm関数は下でprivateで定義
         $form = $this->cForm($post);
         // 'post/new.html.twig'を表示。変数formをわたす
-        // form->dreateView()はViewを表示させるためにいい感じにセットしてくれてる
-        return $this->render('post/new.html.twig', array(
-            'form' => $form->createView(),
-        ));
+        // form->createView()はHTMLのformを作成
+        return $this->render('post/new.html.twig', ['form' => $form->createView()]);
         // $post->setTitle($hoge['title']);
-
     }
 
     private function cForm($entity) {
@@ -96,17 +92,9 @@ class DefaultController extends Controller
             'method' => 'POST'
         ]);
 
-        // formタグの自動生成した時にsubmitを作るようにする
+        // formタグの自動生成した時にsubmitButtonを作るようにする
         $form->add('submit', 'submit');
         return $form;
-    }
-
-    /**
-     * @Route("/edit", name="edit")
-     * @Method("GET")
-     */
-    public function editAction(Request $request){
-        
     }
 
     /**
@@ -118,36 +106,80 @@ class DefaultController extends Controller
         $post = new Post();
         // formを作成
         $form = $this->cForm($post);
-        // $requestで送られてきた値をformに照らし合わせる
+        // $requestで送られてきた値をformオブジェクトに取り込む
         $form->handleRequest($request);
         // entity manager を定義
         $em = $this->getDoctrine()->getManager();
         // もし$formが変数を持っていたら、
         if($form->isValid()) {
-            // $postは$this->cForm($post);によって書き換えられている
+            // $postは$this->cForm($post);によって書き換えられてい(参照渡し)
             // DBへの通信を減らすための何か
             $em->persist($post);
             // DBを更新
             $em->flush();
         }
-        
         return $this->redirect($this->generateUrl('list'));
-        
     }
 
     /**
-     * @Route("/edit", name="edit")
+     * @Route("/edit/{id}", name="edit")
+     * @Method("GET")
+     */
+    public function editAction(Request $request, $id){
+        $em = $this->getDoctrine()->getManager();
+        $postRepository = $em->getRepository("AppBundle:Post");
+        $post = $postRepository->find($id);
+        $form = $this->createUpdatePostForm($post);
+        return $this->render('post/edit.html.twig', ['post' => $post, 'form' => $form->createView()]);
+    }
+
+    /**
+     * @Route("/edit/{id}", name="update")
      * @Method("PUT")
      */
-    public function updateAction(Request $request){
-        
-    }
-    /**
-     * @Route("/delete", name="delete")
-     * @Method("DELETE")
-     */
-    public function deleteAction(Request $request){
-        
+    public function updateAction(Request $request, $id){
+        $em = $this->getDoctrine()->getManager();
+        $postRepository = $em->getRepository("AppBundle:Post");
+        $post = $postRepository->find($id);
+        $form = $this->createUpdatePostForm($post);
+        $form->handleRequest($request);
+        if($form->isValid()) {
+            // $postは$this->cForm($post);によって書き換えられてい(参照渡し)
+            // DBへの通信を減らすための何か
+            $em->persist($post);
+            // DBを更新
+            $em->flush();
+        }else{
+            dump($form->getErrors(true, false));
+        }
+        exit;  
+        return $this->redirect($this->generateUrl('list'));
     }
 
+    private function createUpdatePostForm($entity) {
+        // formタグをマークアップするときのoption?を定義している。
+        $form = $this->createForm(new PostType(), $entity, [
+            // actionを定義
+            'action' => $this->generateUrl('update', ["id"=> $entity->getId() ]),
+            // methodを定義
+            'method' => 'PUT'
+        ]);
+
+        // formタグの自動生成した時にsubmitButtonを作るようにする
+        $form->add('submit', 'submit');
+        return $form;
+    }
+
+    /**
+     * @Route("/delete/{id}", name="delete")
+     * @Method("DELETE")
+     */
+    public function deleteAction(Request $request, $id){
+        $em = $this->getDoctrine()->getManager();
+        $postRepository = $em->getRepository("AppBundle:Post");
+        $post = $postRepository->find($id);   //$post->idが飛んでくると想定
+        $em->remove($post);
+        $em->flush();
+        return $this->redirect($this->generateUrl('list'));
+    }
 }

@@ -16,7 +16,9 @@ class PostType extends AbstractType
         $builder
         ->add('title')
         ->add('content');
-    }/**
+    }
+    
+    /**
      * {@inheritdoc}
      */
     public function configureOptions(OptionsResolver $resolver)
@@ -33,6 +35,5 @@ class PostType extends AbstractType
     {
         return 'appbundle_post';
     }
-
 
 }
